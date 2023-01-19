@@ -20,7 +20,8 @@ import sys
 
 requirements = [
     "numpy>=1.13",
-    "qiskit-terra>=0.15.1",
+    "qiskit-terra>=0.22.4",
+    "qiskit-ibm-runtime>=0.8.0",
     "retworkx>=0.8.0",
     "scipy>=0.19,!=0.19.1",
     "setuptools>=40.1.0",

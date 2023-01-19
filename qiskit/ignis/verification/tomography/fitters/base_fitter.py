@@ -27,6 +27,7 @@ import numpy as np
 from qiskit import QiskitError
 from qiskit import QuantumCircuit
 from qiskit.result import Result
+from qiskit.primitives import SamplerResult    
 from ..basis import TomographyBasis, default_basis
 from ..data import marginal_counts, combine_counts, count_keys
 from .lstsq_fit import lstsq_fit
@@ -43,7 +44,7 @@ class TomographyFitter:
     _HAS_SDP_SOLVER_NOT_SCS = False
 
     def __init__(self,
-                 result: Union[Result, List[Result]],
+                 result: Union[Result, SamplerResult, List[Result]],
                  circuits: Union[List[QuantumCircuit], List[str]],
                  meas_basis: Union[TomographyBasis, str] = 'Pauli',
                  prep_basis: Union[TomographyBasis, str] = 'Pauli'):
@@ -61,6 +62,10 @@ class TomographyFitter:
                 preparation operators. See Additional
                 Information
         """
+        # Check if runtime
+        self.runtime = False
+        if isinstance(result, SamplerResult):
+            self.runtime = True
 
         # Set the measure and prep basis
         self._meas_basis = None
@@ -264,13 +269,19 @@ class TomographyFitter:
             marginalize = True
 
         # Process measurement counts into probabilities
+        i = 0
+
         for circ in circuits:
-            counts = None
-            for result in results:
-                try:
-                    counts = result.get_counts(circ)
-                except QiskitError:
-                    pass
+            if self.runtime == True:
+                counts = results.quasi_dists[i]
+                i += 1
+            else:
+                counts = None
+                for result in results:
+                    try:
+                        counts = result.get_counts(circ)
+                    except QiskitError:
+                        pass
             if counts is None:
                 raise QiskitError("Result for {} not found".format(circ.name))
             if isinstance(circ, str):
@@ -338,7 +349,8 @@ class TomographyFitter:
         else:
             ctkeys = count_keys(len(label))
         for label, cts in self._data.items():
-
+            if self.runtime == True:
+                ctkeys = range(len(ctkeys))
             # Convert counts dict to numpy array
             if isinstance(cts, dict):
                 cts = np.array([cts.get(key, 0) for key in ctkeys])
